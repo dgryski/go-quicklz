@@ -194,7 +194,7 @@ func compress(source []byte, level int) []byte {
 			fetch = fastRead(source, src, 3)
 
 			var o, offset2 int
-			var matchlen, k, m, bestK int
+			var matchlen, k, m int
 			var c byte
 
 			remaining := 255
@@ -218,12 +218,9 @@ func compress(source []byte, level int) []byte {
 					if (m > matchlen) || (m == matchlen && o > offset2) {
 						offset2 = o
 						matchlen = m
-						bestK = k
 					}
 				}
 			}
-
-			_ = bestK
 
 			o = offset2
 			hashtable[hash][c&(QLZ_POINTERS_3-1)] = src
