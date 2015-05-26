@@ -78,7 +78,7 @@ func writeHeader(dst []byte, level int, compressible bool, sizeCompressed int, s
 	fastWrite(dst, 5, sizeCompressed, 4)
 }
 
-func compress(source []byte, level int) []byte {
+func Compress(source []byte, level int) []byte {
 	var src int
 	var dst = DEFAULT_HEADERLEN + CWORD_LEN
 	var cwordVal uint32 = 0x80000000
@@ -289,7 +289,7 @@ func compress(source []byte, level int) []byte {
 	return d2
 }
 
-func decompress(source []byte) []byte {
+func Decompress(source []byte) []byte {
 	size := sizeDecompressed(source)
 	src := headerLen(source)
 	var dst int
