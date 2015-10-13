@@ -15,7 +15,11 @@ func TestCompress(t *testing.T) {
 
 		qz := Compress(in[:i], 1)
 
-		out := Decompress(qz)
+		out, err := Decompress(qz)
+		if err != nil {
+			t.Errorf("roundtrip error length %d: %v", i, err)
+		}
+
 		if !bytes.Equal(in[:i], out) {
 			offs := dump(t, "o", out, "i", in[:i])
 			t.Log("\n" + hex.Dump(qz))

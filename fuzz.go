@@ -2,8 +2,6 @@
 
 package quicklz
 
-import "encoding/binary"
-
 func Fuzz(data []byte) int {
 
 	if len(data) < 5 {
@@ -16,12 +14,12 @@ func Fuzz(data []byte) int {
 
 	}
 
-	ln := binary.LittleEndian.Uint32(data[1:])
+	ln, _ := sizeDecompressed(data)
 	if ln > (1 << 21) {
 		return 0
 	}
 
-	if b := Decompress(data); b == nil {
+	if _, err := Decompress(data); err != nil {
 		return 0
 	}
 
