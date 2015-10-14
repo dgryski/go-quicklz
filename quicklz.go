@@ -9,12 +9,6 @@ package quicklz
 import "errors"
 
 const (
-	// Streaming mode not supported
-	QLZ_STREAMING_BUFFER = 0
-
-	// Bounds checking not supported. Use try...catch instead
-	QLZ_MEMORY_SAFE = 0
-
 	QLZ_VERSION_MAJOR    = 1
 	QLZ_VERSION_MINOR    = 5
 	QLZ_VERSION_REVISION = 0
