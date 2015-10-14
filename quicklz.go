@@ -9,20 +9,21 @@ package quicklz
 import "errors"
 
 const (
-	QLZ_VERSION_MAJOR    = 1
-	QLZ_VERSION_MINOR    = 5
-	QLZ_VERSION_REVISION = 0
+	// The QuickLZ protocol version
+	VersionMajor    = 1
+	VersionMinor    = 5
+	VersionRevision = 0
 
-	// Decrease QLZ_POINTERS_3 to increase compression speed of level 3. Do not
+	// Decrease pointers3 to increase compression speed of level 3. Do not
 	// edit any other constants!
-	HASH_VALUES            = 4096
-	MINOFFSET              = 2
-	UNCONDITIONAL_MATCHLEN = 6
-	UNCOMPRESSED_END       = 4
-	CWORD_LEN              = 4
-	DEFAULT_HEADERLEN      = 9
-	QLZ_POINTERS_1         = 1
-	QLZ_POINTERS_3         = 16
+	hashValues            = 4096
+	minOffset             = 2
+	unconditionalMatchLen = 6
+	uncompressedEnd       = 4
+	cwordLen              = 4
+	defaultHeaderLen      = 9
+	pointers1             = 1
+	pointers3             = 16
 )
 
 func headerLen(source []byte) int {
@@ -79,30 +80,30 @@ func writeHeader(dst []byte, level int, compressible bool, sizeCompressed int, s
 
 func Compress(source []byte, level int) []byte {
 	var src int
-	var dst = DEFAULT_HEADERLEN + CWORD_LEN
+	var dst = defaultHeaderLen + cwordLen
 	var cwordVal uint32 = 0x80000000
-	var cwordPtr = DEFAULT_HEADERLEN
+	var cwordPtr = defaultHeaderLen
 	var destination = make([]byte, len(source)+400)
 	var hashtable [][]int
-	var cachetable = make([]int, HASH_VALUES)
-	var hashCounter = make([]byte, HASH_VALUES)
+	var cachetable = make([]int, hashValues)
+	var hashCounter = make([]byte, hashValues)
 	var d2 []byte
 	var fetch = 0
-	var lastMatchStart = (len(source) - UNCONDITIONAL_MATCHLEN - UNCOMPRESSED_END - 1)
+	var lastMatchStart = (len(source) - unconditionalMatchLen - uncompressedEnd - 1)
 	var lits = 0
 
 	if level != 1 && level != 3 {
 		panic("Go version only supports level 1 and 3")
 	}
 
-	hashtable = make([][]int, HASH_VALUES)
+	hashtable = make([][]int, hashValues)
 
-	hpointers := QLZ_POINTERS_1
+	hpointers := pointers1
 	if level == 3 {
-		hpointers = QLZ_POINTERS_3
+		hpointers = pointers3
 	}
 
-	for i := 0; i < HASH_VALUES; i++ {
+	for i := 0; i < hashValues; i++ {
 		hashtable[i] = make([]int, hpointers)
 	}
 
@@ -117,27 +118,27 @@ func Compress(source []byte, level int) []byte {
 	for src <= lastMatchStart {
 		if (cwordVal & 1) == 1 {
 			if src > 3*(len(source)>>2) && dst > src-(src>>5) {
-				d2 = make([]byte, len(source)+DEFAULT_HEADERLEN)
-				writeHeader(d2, level, false, len(source), len(source)+DEFAULT_HEADERLEN)
-				copy(d2[DEFAULT_HEADERLEN:], source)
+				d2 = make([]byte, len(source)+defaultHeaderLen)
+				writeHeader(d2, level, false, len(source), len(source)+defaultHeaderLen)
+				copy(d2[defaultHeaderLen:], source)
 				return d2
 			}
 
 			fastWrite(destination, cwordPtr, int(cwordVal>>1)|0x80000000, 4)
 			cwordPtr = dst
-			dst += CWORD_LEN
+			dst += cwordLen
 			cwordVal = 0x80000000
 		}
 
 		if level == 1 {
-			hash := ((fetch >> 12) ^ fetch) & (HASH_VALUES - 1)
+			hash := ((fetch >> 12) ^ fetch) & (hashValues - 1)
 			o := hashtable[hash][0]
 			cache := cachetable[hash] ^ fetch
 
 			cachetable[hash] = fetch
 			hashtable[hash][0] = src
 
-			if cache == 0 && hashCounter[hash] != 0 && (src-o > MINOFFSET || (src == o+1 && lits >= 3 && src > 3 && source[src] == source[src-3] && source[src] == source[src-2] && source[src] == source[src-1] && source[src] == source[src+1] && source[src] == source[src+2])) {
+			if cache == 0 && hashCounter[hash] != 0 && (src-o > minOffset || (src == o+1 && lits >= 3 && src > 3 && source[src] == source[src-3] && source[src] == source[src-2] && source[src] == source[src-1] && source[src] == source[src+1] && source[src] == source[src+2])) {
 				cwordVal = ((cwordVal >> 1) | 0x80000000)
 				if source[o+3] != source[src+3] {
 					f := 3 - 2 | (hash << 4)
@@ -148,7 +149,7 @@ func Compress(source []byte, level int) []byte {
 				} else {
 					oldSrc := src
 					remaining := 255
-					if ln := (len(source) - UNCOMPRESSED_END - src + 1 - 1); ln <= 255 {
+					if ln := (len(source) - uncompressedEnd - src + 1 - 1); ln <= 255 {
 						remaining = ln
 					}
 
@@ -197,19 +198,19 @@ func Compress(source []byte, level int) []byte {
 			var c byte
 
 			remaining := 255
-			if ln := (len(source) - UNCOMPRESSED_END - src + 1 - 1); ln <= 255 {
+			if ln := (len(source) - uncompressedEnd - src + 1 - 1); ln <= 255 {
 				remaining = ln
 			}
 
-			hash := ((fetch >> 12) ^ fetch) & (HASH_VALUES - 1)
+			hash := ((fetch >> 12) ^ fetch) & (hashValues - 1)
 
 			c = hashCounter[hash]
 			matchlen = 0
 			offset2 = 0
-			for k = 0; k < QLZ_POINTERS_3 && (int(c) > k || c < 0); k++ {
+			for k = 0; k < pointers3 && (int(c) > k || c < 0); k++ {
 
 				o = hashtable[hash][k]
-				if byte(fetch) == source[o] && byte(fetch>>8) == source[o+1] && byte(fetch>>16) == source[o+2] && o < src-MINOFFSET {
+				if byte(fetch) == source[o] && byte(fetch>>8) == source[o+1] && byte(fetch>>16) == source[o+2] && o < src-minOffset {
 					m = 3
 					for source[o+m] == source[src+m] && m < remaining {
 						m++
@@ -222,7 +223,7 @@ func Compress(source []byte, level int) []byte {
 			}
 
 			o = offset2
-			hashtable[hash][c&(QLZ_POINTERS_3-1)] = src
+			hashtable[hash][c&(pointers3-1)] = src
 			c++
 			hashCounter[hash] = c
 
@@ -230,10 +231,10 @@ func Compress(source []byte, level int) []byte {
 				offset := src - o
 				for u := 1; u < matchlen; u++ {
 					fetch, _ = fastRead(source, src+u, 3)
-					hash = ((fetch >> 12) ^ fetch) & (HASH_VALUES - 1)
+					hash = ((fetch >> 12) ^ fetch) & (hashValues - 1)
 					c = hashCounter[hash]
 					hashCounter[hash]++
-					hashtable[hash][c&(QLZ_POINTERS_3-1)] = src + u
+					hashtable[hash][c&(pointers3-1)] = src + u
 				}
 
 				src += matchlen
@@ -268,7 +269,7 @@ func Compress(source []byte, level int) []byte {
 		if (cwordVal & 1) == 1 {
 			fastWrite(destination, cwordPtr, int(cwordVal>>1)|0x80000000, 4)
 			cwordPtr = dst
-			dst += CWORD_LEN
+			dst += cwordLen
 			cwordVal = 0x80000000
 		}
 
@@ -280,7 +281,7 @@ func Compress(source []byte, level int) []byte {
 	for (cwordVal & 1) != 1 {
 		cwordVal = (cwordVal >> 1)
 	}
-	fastWrite(destination, cwordPtr, int(cwordVal>>1)|0x80000000, CWORD_LEN)
+	fastWrite(destination, cwordPtr, int(cwordVal>>1)|0x80000000, cwordLen)
 	writeHeader(destination, level, true, len(source), dst)
 
 	d2 = make([]byte, dst)
@@ -304,7 +305,7 @@ func Decompress(source []byte) ([]byte, error) {
 	destination := make([]byte, size)
 	hashtable := make([]int, 4096)
 	hashCounter := make([]byte, 4096)
-	lastMatchStart := size - UNCONDITIONAL_MATCHLEN - UNCOMPRESSED_END - 1
+	lastMatchStart := size - unconditionalMatchLen - uncompressedEnd - 1
 	lastHashed := -1
 	var hash int
 	var fetch int
@@ -412,7 +413,7 @@ func Decompress(source []byte) ([]byte, error) {
 				}
 				for lastHashed < dst-matchlen {
 					lastHashed++
-					hash = ((fetch >> 12) ^ fetch) & (HASH_VALUES - 1)
+					hash = ((fetch >> 12) ^ fetch) & (hashValues - 1)
 					hashtable[hash] = lastHashed
 					hashCounter[hash] = 1
 					if len(destination) <= lastHashed+3 {
@@ -445,7 +446,7 @@ func Decompress(source []byte) ([]byte, error) {
 						if err != nil {
 							return nil, ErrCorrupt
 						}
-						hash = ((fetch2 >> 12) ^ fetch2) & (HASH_VALUES - 1)
+						hash = ((fetch2 >> 12) ^ fetch2) & (hashValues - 1)
 						hashtable[hash] = lastHashed
 						hashCounter[hash] = 1
 					}
@@ -462,7 +463,7 @@ func Decompress(source []byte) ([]byte, error) {
 			} else {
 				for dst <= size-1 {
 					if cwordVal == 1 {
-						src += CWORD_LEN
+						src += cwordLen
 						cwordVal = 0x80000000
 					}
 
