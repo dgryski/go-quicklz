@@ -8,12 +8,14 @@ package quicklz
 
 import "errors"
 
+// The QuickLZ protocol version
 const (
-	// The QuickLZ protocol version
 	VersionMajor    = 1
 	VersionMinor    = 5
 	VersionRevision = 0
+)
 
+const (
 	// Decrease pointers3 to increase compression speed of level 3. Do not
 	// edit any other constants!
 	hashValues            = 4096
@@ -78,6 +80,7 @@ func writeHeader(dst []byte, level int, compressible bool, sizeCompressed int, s
 	fastWrite(dst, 5, sizeCompressed, 4)
 }
 
+// Compress compresses a byte slice.  Valid levels are 1 and 3.
 func Compress(source []byte, level int) []byte {
 	var src int
 	var dst = defaultHeaderLen + cwordLen
@@ -290,10 +293,13 @@ func Compress(source []byte, level int) []byte {
 }
 
 var (
-	ErrCorrupt        = errors.New("quicklz: corrupt document")
+	// ErrCorrupt indicates the input was corrupted
+	ErrCorrupt = errors.New("quicklz: corrupt document")
+	// ErrInvalidVersion indicates the compression version / level is not supported
 	ErrInvalidVersion = errors.New("quicklz: unsupported compression version")
 )
 
+// Decompress decompresses a compressed byte slice.
 func Decompress(source []byte) ([]byte, error) {
 	size, err := sizeDecompressed(source)
 	if err != nil || size < 0 {
